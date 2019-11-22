@@ -5,7 +5,8 @@ import tensorflow as tf
 
 import numpy as np
 from skimage import io, transform
-from settings import CONFIG_PATH, GPU
+from settings import CONFIG_PATH, GPU, SOCKET_NAME, GPU_FRAC
+from utils.autolistener import AutoListener
 from xray_processing.xray_predictor_multi import XrayPredictorMulti
 
 
@@ -62,12 +63,9 @@ if __name__ == '__main__':
     else:
         config.gpu_options.visible_device_list = str(GPU)
         config.gpu_options.allow_growth = True
-        config.gpu_options.per_process_gpu_memory_fraction = 0.9
+        config.gpu_options.per_process_gpu_memory_fraction = GPU_FRAC
     sess = tf.Session(config=config)
-    try:
-        xp = XrayPredictorMulti(CONFIG_PATH)
-        input_ = input()
-        predict_single_image(image_path=input_, xp=xp)
-        print('SUCCESS')
-    except Exception as e:
-        print('ERROR')
+    xp = XrayPredictorMulti(CONFIG_PATH)
+
+    alist = AutoListener(SOCKET_NAME, lambda input_: predict_single_image(image_path=input_, xp=xp))
+    print('Predictor process is dead')

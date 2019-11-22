@@ -10,12 +10,15 @@ from werkzeug.utils import secure_filename
 import os
 from flask import Flask, request, jsonify
 
+from utils.autostarter import AutoStarter
+
 if not os.path.isdir(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/process": {"origins": FRONTEND_URL}})
 
+ast = AutoStarter(NN_TIMEOUT,['python', 'process.py'], SOCKET_NAME)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -39,11 +42,10 @@ def process_image():
                 to_delete.append(input_path + '_.png')
                 input_path = input_path + '_.png'
 
-            proc = subprocess.Popen(['python', 'process.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                    universal_newlines=True)
-            reply = proc.communicate(input_path + '\n')
-            if reply is 'ERROR':
-                raise Exception('Error in subprocess')
+            reply = ast.send_recv(input_path)
+            print(reply)
+            if reply != 'SUCCESS':
+                raise Exception(reply)
 
             with open(input_path + '_proc.png', 'rb') as file:
                 ret_val['proc'] = base64.b64encode(file.read()).decode('utf-8')
