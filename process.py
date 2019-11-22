@@ -1,5 +1,8 @@
 import sys
 import json
+import time
+import tensorflow as tf
+
 import numpy as np
 from skimage import io, transform
 from settings import CONFIG_PATH, GPU
@@ -47,15 +50,12 @@ def save_combined(img_normalized, image_path, predictions, rgb, xp):
         json.dump(predictions, f, indent=2)
 
 
-def predict_single_image(image_path):
-    xp = XrayPredictorMulti(CONFIG_PATH)
+def predict_single_image(image_path, xp):
     predictions, rgb, img_normalized = xp.load_and_predict_image(image_path)
     save_combined(img_normalized, image_path, predictions, rgb, xp)
 
 
 if __name__ == '__main__':
-    import tensorflow as tf
-
     config = tf.ConfigProto()
     if GPU == -1:
         config.gpu_options.visible_device_list = ''
@@ -64,6 +64,10 @@ if __name__ == '__main__':
         config.gpu_options.allow_growth = True
         config.gpu_options.per_process_gpu_memory_fraction = 0.9
     sess = tf.Session(config=config)
-
-    image = sys.argv[1]
-    predict_single_image(image_path=image)
+    try:
+        xp = XrayPredictorMulti(CONFIG_PATH)
+        input_ = input()
+        predict_single_image(image_path=input_, xp=xp)
+        print('SUCCESS')
+    except Exception as e:
+        print('ERROR')

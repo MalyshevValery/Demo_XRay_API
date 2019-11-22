@@ -1,10 +1,8 @@
 import base64
 import datetime
 import json
-import multiprocessing
 import subprocess
 
-from process import predict_single_image
 from settings import *
 import cv2
 from flask_cors import CORS
@@ -41,8 +39,11 @@ def process_image():
                 to_delete.append(input_path + '_.png')
                 input_path = input_path + '_.png'
 
-            #predict_single_image(input_path)
-            code = subprocess.call(["python", "process.py", input_path])
+            proc = subprocess.Popen(['python', 'process.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    universal_newlines=True)
+            reply = proc.communicate(input_path + '\n')
+            if reply is 'ERROR':
+                raise Exception('Error in subprocess')
 
             with open(input_path + '_proc.png', 'rb') as file:
                 ret_val['proc'] = base64.b64encode(file.read()).decode('utf-8')
@@ -67,5 +68,5 @@ def process_image():
         return jsonify({'error': 'not an image'})
 
 
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
