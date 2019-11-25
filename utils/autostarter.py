@@ -13,6 +13,7 @@ class AutoStarter:
         self.call = call
         self.socket_name = socket_name
         self.keyword = keyword
+        self.lock = threading.Lock();
 
         if os.path.exists(self.socket_name):
             os.remove(self.socket_name)
@@ -39,11 +40,13 @@ class AutoStarter:
         return 0
 
     def send_recv(self, input_):
+        self.lock.acquire()
         if self.proc is None:
             self.__start()
         elif self.timer is not None:
             self.timer.cancel()
-        self.conn.send(input_.encode('UTF-8'))
+        self.lock.release()
+        self.conn.send((input_ + '\n').encode('UTF-8'))
         recv = self.conn.recv(1024).decode('UTF-8')
         self.timer = threading.Timer(self.timeout, self.stop)
         self.timer.start()

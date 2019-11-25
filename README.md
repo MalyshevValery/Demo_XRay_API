@@ -1,12 +1,12 @@
 # API server for Demo PTD XRay
+Backend server for [this repo](https://github.com/MalyshevValery/Demo_XRay_Web)
 
 ### Installation
 1. `python3 -m venv venv`
 2. `pip install -r requirements.txt`
-3. Setup parameters on top of `app.py`
-4. UWSGI and nginx
+3. Run `python deploy.py` and insert proper link (to get it you can contact me personally)
+3. Setup parameters in `settings.py`
 
-
-1. Download repo with neural networks 
-`git clone https://github.com/skliff13/Xray_PTD_Processing`
-2. 
+### Run
+- You can start dev server on `localhost:5000` by running `python wsgi.py`
+- You can try test uwsgi configuration by running `uwsgi --ini uwsgi.ini`
