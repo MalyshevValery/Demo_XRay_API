@@ -14,6 +14,7 @@ class AutoListener:
                         ret = 'EMPTY'
                     else:
                         data = data.decode('UTF-8')
+                        print(data)
                         on_recv(data)
                         ret = 'SUCCESS'
                 else:

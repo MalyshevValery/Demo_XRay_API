@@ -2,6 +2,7 @@ import base64
 import datetime
 import json
 import subprocess
+import urllib
 
 import requests
 
@@ -42,9 +43,14 @@ def process_image():
 
             file.save(input_path)
         elif 'image' in request.form:
-            r = requests.get(request.form['image'])
             with open(input_path, 'wb') as f:
-                f.write(r.content)
+                try:
+                    r = requests.get(request.form['image'])
+                    f.write(r.content)
+                except Exception as e:
+                    r = urllib.request.urlopen(request.form['image'])
+                    f.write(r.file.read())
+
         else:
             raise Exception('No image were sent')
 
@@ -56,7 +62,7 @@ def process_image():
             to_delete.append(input_path + '_.png')
             input_path = input_path + '_.png'
 
-        reply = ast.send_recv(input_path + '\n')
+        reply = ast.send_recv(input_path)
         print(reply)
         if reply != 'SUCCESS':
             raise Exception(reply)
