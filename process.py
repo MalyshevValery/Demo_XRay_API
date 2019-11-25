@@ -1,3 +1,6 @@
+from settings import CONFIG_PATH, GPU, SOCKET_NAME, GPU_FRAC
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]=GPU
 import sys
 import json
 import time
@@ -5,10 +8,8 @@ import tensorflow as tf
 
 import numpy as np
 from skimage import io, transform
-from settings import CONFIG_PATH, GPU, SOCKET_NAME, GPU_FRAC
 from utils.autolistener import AutoListener
 from xray_processing.xray_predictor_multi import XrayPredictorMulti
-
 
 def pred2str(predictions, items_per_row=3):
     rows = []
@@ -58,12 +59,7 @@ def predict_single_image(image_path, xp):
 
 if __name__ == '__main__':
     config = tf.ConfigProto()
-    if GPU == -1:
-        config.gpu_options.visible_device_list = ''
-    else:
-        config.gpu_options.visible_device_list = str(GPU)
-        config.gpu_options.allow_growth = True
-        config.gpu_options.per_process_gpu_memory_fraction = GPU_FRAC
+    config.gpu_options.per_process_gpu_memory_fraction = GPU_FRAC
     sess = tf.Session(config=config)
     xp = XrayPredictorMulti(CONFIG_PATH)
 
