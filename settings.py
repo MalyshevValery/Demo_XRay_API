@@ -1,4 +1,4 @@
-FRONTEND_URL = 'https://image.org.by:22'
+FRONTEND_URL = 'http://localhost:9000'
 ALLOWED_EXTENSIONS = {'bmp', 'dib', 'jpeg', 'jpg', 'jpe', 'jp2', 'png', 'webp', 'pbm', 'pgm', 'ppm', 'sr',
                       'ras', 'tiff',
                       'tif'}
@@ -6,6 +6,5 @@ ALLOWED_EXTENSIONS = {'bmp', 'dib', 'jpeg', 'jpg', 'jpe', 'jp2', 'png', 'webp', 
 NN_TIMEOUT = 10
 SOCKET_NAME = 'inner_socket'
 UPLOAD_FOLDER = 'upload_folder'
-CONFIG_PATH = 'models/setup_vgg16m_1.json'
-GPU = '1'  #  '' for CPU
-GPU_FRAC = 0.3
+CONFIG_PATH = 'model/setup_vgg16h_1.json'
+GPU = ''  #  '' for CPU
