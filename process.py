@@ -1,15 +1,14 @@
-from settings import CONFIG_PATH, GPU, SOCKET_NAME, GPU_FRAC
+from settings import CONFIG_PATH, GPU, SOCKET_NAME
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=GPU
-import sys
 import json
-import time
-import tensorflow as tf
-
 import numpy as np
 from skimage import io, transform
 from utils.autolistener import AutoListener
-from xray_processing.xray_predictor_multi import XrayPredictorMulti
+from xray_processing.xray_predictor import XrayPredictor
+
+os.environ["CUDA_VISIBLE_DEVICES"] = GPU
+import tensorflow as tf
+
 
 def pred2str(predictions, items_per_row=3):
     rows = []
@@ -58,10 +57,9 @@ def predict_single_image(image_path, xp):
 
 
 if __name__ == '__main__':
-    config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = GPU_FRAC
-    sess = tf.Session(config=config)
-    xp = XrayPredictorMulti(CONFIG_PATH)
+    xp = XrayPredictor(CONFIG_PATH, cpu_only=GPU == '')
 
-    alist = AutoListener(SOCKET_NAME, lambda input_: predict_single_image(image_path=input_, xp=xp))
+    alist = AutoListener(SOCKET_NAME,
+                         lambda input_: predict_single_image(image_path=input_,
+                                                             xp=xp))
     print('Predictor process is dead')

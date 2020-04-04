@@ -21,7 +21,8 @@ if not os.path.isdir(UPLOAD_FOLDER):
 app = Flask(__name__)
 cors = CORS(app, resources={r"/process": {"origins": FRONTEND_URL}})
 
-ast = AutoStarter(NN_TIMEOUT,['python', 'process.py'], SOCKET_NAME)
+ast = AutoStarter(NN_TIMEOUT, ['python', 'process.py'], SOCKET_NAME)
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -86,7 +87,6 @@ def process_image():
         for s in to_delete:
             os.remove(s)
     return jsonify(ret_val)
-
 
 
 if __name__ == "__main__":
