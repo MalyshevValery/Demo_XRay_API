@@ -7,7 +7,6 @@ from utils.autolistener import AutoListener
 from xray_processing.xray_predictor import XrayPredictor
 
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU
-import tensorflow as tf
 
 
 def pred2str(predictions, items_per_row=3):

@@ -25,7 +25,7 @@ ast = AutoStarter(NN_TIMEOUT, ['python', 'process.py'], SOCKET_NAME)
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.split('.')[-1] in ALLOWED_EXTENSIONS
 
 
 @app.route('/process', methods=['POST'])
@@ -56,12 +56,6 @@ def process_image():
             raise Exception('No image were sent')
 
         to_delete.append(input_path)
-
-        if not input_path.endswith('.png'):
-            image = cv2.imread(input_path)
-            cv2.imwrite(input_path + '_.png', image)
-            to_delete.append(input_path + '_.png')
-            input_path = input_path + '_.png'
 
         reply = ast.send_recv(input_path)
         print(reply)
