@@ -26,6 +26,8 @@ class XrayPredictionSettings:
         self.segm_model_path = setup['segm_model_path']
         self.channels = job['channels'] if 'channels' in job else 1
         self.heatmap_settings = HeatMapSettings(setup['heatmap'])
+        self.background_saturation = setup['background_saturation']
+        self.use_crutch = setup['use_crutch']
 
 
 class HeatMapSettings:
@@ -43,4 +45,4 @@ class HeatMapSettings:
 
 
 if __name__ == '__main__':
-    XrayPredictionSettings('setup_vgg19h_1.json')
+    XrayPredictionSettings('setup_vgg16h_2.json')

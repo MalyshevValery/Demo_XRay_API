@@ -164,6 +164,7 @@ class XrayPredictor:
 
     def _infer_neural_net(self, img_roi):
         m: ModelsLoader = self.models
+        s: XrayPredictionSettings = self.prediction_settings
 
         image_sz = img_roi.shape[0]
 
@@ -174,9 +175,19 @@ class XrayPredictor:
         print('Evaluating net')
         prob = m.cls_model.predict(x, batch_size=1)[0, :]
 
-        predictions = self._compose_predictions(prob)
+        if s.use_crutch and s.heatmap_settings.method == 'layer':
+            map_layer_output = m.map_layer_model.predict(x, batch_size=1)
+            map_layer_output[0, 2:5, 4:6, :] = 0
+            prediction_scores = np.max(map_layer_output[0], axis=(0, 1))
+            predictions = dict()
+            for i, class_name in enumerate(s.class_names):
+                predictions[class_name] = round(prediction_scores[i], 3)
 
-        heat_map = self._build_heatmap(image_sz, x, predictions['class_number'])
+            heat_map = map_layer_output[0, :, :, 0].astype(float)
+            heat_map = imresize(heat_map, (image_sz, image_sz))
+        else:
+            predictions = self._compose_predictions(prob)
+            heat_map = self._build_heatmap(image_sz, x, predictions['class_number'])
 
         return heat_map, prob, predictions
 
@@ -258,8 +269,7 @@ class XrayPredictor:
             if class_name != 'class_number':
                 predictions[class_name] *= predictions['class_number']
 
-    @staticmethod
-    def _make_colored(img_normalized, mask, heat_map, cropping):
+    def _make_colored(self, img_normalized, mask, heat_map, cropping):
         sz = img_normalized.shape
         hsv = np.zeros((sz[0], sz[1], 3))
 
@@ -267,8 +277,7 @@ class XrayPredictor:
         v[v < 0] = 0
         v[v > 1] = 1
         hsv[:, :, 2] = 0.1 + 0.9 * v
-        # TODO make adjustable through config
-        hsv[:, :, 1] = 0.0 + mask * 0.5
+        hsv[:, :, 1] = mask * 0.5 + self.prediction_settings.background_saturation
 
         x_low, x_high, y_low, y_high = cropping.unpack_values()
 
@@ -306,15 +315,3 @@ class XrayPredictor:
                 config.gpu_options.per_process_gpu_memory_fraction = 0.5
                 config.gpu_options.visible_device_list = gpu_list
             set_session(tf.Session(config=config))
-
-
-def main():
-    xp = XrayPredictor('setup_vgg16_1.json', cpu_only=True)
-    predictions, rgb, img_normalized = xp.load_and_predict_image('test_data/tb_01.jpg')
-    print(predictions)
-    io.imsave('temp_rgb.png', (rgb * 255).astype(np.uint8))
-    io.imsave('temp_normalized.png', (img_normalized * 255).astype(np.uint8))
-
-
-if __name__ == '__main__':
-    main()
