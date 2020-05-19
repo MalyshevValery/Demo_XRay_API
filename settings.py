@@ -1,7 +1,7 @@
 FRONTEND_URL = 'http://localhost:4200'
 ALLOWED_EXTENSIONS = {'bmp', 'dib', 'jpeg', 'jpg', 'jpe', 'jp2', 'png', 'webp',
                       'pbm', 'pgm', 'ppm', 'sr',
-                      'ras', 'tiff', 'dcm',
+                      'ras', 'tiff', 'dcm', 'dicom', 'eli',
                       'tif'}
 
 NN_TIMEOUT = 10

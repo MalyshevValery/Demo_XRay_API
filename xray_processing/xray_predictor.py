@@ -1,6 +1,6 @@
 import os
 import tensorflow as tf
-import pydicom
+#import pydicom
 import numpy as np
 import tensorflow
 from skimage import io, color, exposure, morphology
@@ -52,10 +52,29 @@ class XrayPredictor:
         elif ext in ['.dcm', '.dicom', '']:
             dcm = pydicom.dcmread(input_image_path)
             img_original = dcm.pixel_array
+        elif ext in ['.eli']:
+            img_original = XrayPredictor._load_eli_image(input_image_path)
         else:
             raise Exception('Unsupported input image extension: ' + ext)
 
         print('Loaded image (%i x %i)' % (img_original.shape[0], img_original.shape[1]))
+        return img_original
+
+    @staticmethod
+    def _load_eli_image(input_image_path):
+        with open(input_image_path, 'rb') as f:
+            all_bytes = f.read()
+
+        resolution_bytes = all_bytes[16:24]
+        resolution = np.frombuffer(resolution_bytes, dtype=np.uint32)
+        num_pixels = np.prod(resolution)
+        pixel_bytes = all_bytes[-(int(num_pixels) * 2):]
+        pixels = np.frombuffer(pixel_bytes, dtype=np.int16)
+
+        w, h = tuple(resolution)
+        img_original = pixels.reshape((h, w))
+        img_original = 2 ** 15 - img_original
+
         return img_original
 
     @staticmethod
