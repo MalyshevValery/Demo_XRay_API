@@ -1,6 +1,6 @@
 import os
 import tensorflow as tf
-#import pydicom
+import pydicom
 import numpy as np
 import tensorflow
 from skimage import io, color, exposure, morphology
@@ -49,7 +49,7 @@ class XrayPredictor:
         ext = os.path.splitext(input_image_path)[-1].lower()
         if ext in ['.jpg', '.png', '.bmp', '.jpeg']:
             img_original = io.imread(input_image_path)
-        elif ext in ['.dcm', '.dicom', '']:
+        elif ext in ['.dcm', '.dicom', '.bin']:
             dcm = pydicom.dcmread(input_image_path)
             img_original = dcm.pixel_array
         elif ext in ['.eli']:
