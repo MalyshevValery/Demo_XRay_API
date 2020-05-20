@@ -9,7 +9,8 @@ from tensorflow.keras import backend as K
 from xray_processing.prediction_settings import XrayPredictionSettings
 from xray_processing.models_loader import ModelsLoader
 from xray_processing.cropping import Cropping
-from xray_processing.imutils import imresize, normalize_by_lung_convex_hull, normalize_by_lung_mean_std
+from xray_processing.imutils import imresize, normalize_by_lung_convex_hull, \
+    normalize_by_lung_mean_std
 
 
 class XrayPredictor:
@@ -31,7 +32,8 @@ class XrayPredictor:
 
         lungs = self._segment_lungs(preview)
 
-        img_normalized, mask, img_roi, mask_roi, cropping = self._normalize_and_crop(img_gray, lungs)
+        img_normalized, mask, img_roi, mask_roi, cropping = self._normalize_and_crop(
+            img_gray, lungs)
 
         heat_map, prob, predictions = self._infer_neural_net(img_roi)
 
@@ -52,12 +54,17 @@ class XrayPredictor:
         elif ext in ['.dcm', '.dicom', '.bin']:
             dcm = pydicom.dcmread(input_image_path)
             img_original = dcm.pixel_array
+            if 'ViewPosition' in dcm.dir() and dcm.ViewPosition.upper() == 'AP':
+                img_original = img_original[:, ::-1]
+            if 'PhotometricInterpretation' in dcm.dir() and dcm.PhotometricInterpretation.upper() == 'MONOCHROME1':
+                img_original = np.max(img_original) - img_original
         elif ext in ['.eli']:
             img_original = XrayPredictor._load_eli_image(input_image_path)
         else:
             raise Exception('Unsupported input image extension: ' + ext)
 
-        print('Loaded image (%i x %i)' % (img_original.shape[0], img_original.shape[1]))
+        print('Loaded image (%i x %i)' % (
+        img_original.shape[0], img_original.shape[1]))
         return img_original
 
     @staticmethod
@@ -87,7 +94,9 @@ class XrayPredictor:
             elif img_original.shape[2] == 4:
                 img_gray = color.rgb2gray(img_original[:, :, 0:3])
             else:
-                raise Exception('Unsupported number of channels of the input image: ' + img_original.shape[2])
+                raise Exception(
+                    'Unsupported number of channels of the input image: ' +
+                    img_original.shape[2])
         else:
             img_gray = img_original.copy()
 
@@ -122,7 +131,8 @@ class XrayPredictor:
         x = np.expand_dims(x, axis=-1)
 
         segm_model = self.models.segm_model
-        lungs = segm_model.predict(x, batch_size=1)[..., 0].reshape(preview.shape)
+        lungs = segm_model.predict(x, batch_size=1)[..., 0].reshape(
+            preview.shape)
         lungs = lungs > 0.5
         lungs = remove_small_regions(lungs, 0.02 * np.prod(preview.shape))
 
@@ -162,7 +172,8 @@ class XrayPredictor:
         elif self.prediction_settings.normalization == 'mean_std':
             img_normalized = normalize_by_lung_mean_std(img_gray, mask)
         else:
-            raise Exception('Unknown normalization: ' + str(self.prediction_settings.normalization))
+            raise Exception('Unknown normalization: ' + str(
+                self.prediction_settings.normalization))
 
         img_normalized[img_normalized < 0] = 0
         img_normalized[img_normalized > 1] = 1
@@ -206,7 +217,8 @@ class XrayPredictor:
             heat_map = imresize(heat_map, (image_sz, image_sz))
         else:
             predictions = self._compose_predictions(prob)
-            heat_map = self._build_heatmap(image_sz, x, predictions['class_number'])
+            heat_map = self._build_heatmap(image_sz, x,
+                                           predictions['class_number'])
 
         return heat_map, prob, predictions
 
@@ -233,7 +245,8 @@ class XrayPredictor:
         elif s.heatmap_settings.method == 'gradcam':
             heat_map = self._build_heatmap_grad_cam(x, max_prob)
         else:
-            raise Exception('Unsupported heatmap method "%s"' % s.heatmap_settings.method)
+            raise Exception(
+                'Unsupported heatmap method "%s"' % s.heatmap_settings.method)
 
         heat_map[heat_map < 0] = 0
         heat_map[heat_map > 1] = 1
@@ -296,12 +309,14 @@ class XrayPredictor:
         v[v < 0] = 0
         v[v > 1] = 1
         hsv[:, :, 2] = 0.1 + 0.9 * v
-        hsv[:, :, 1] = mask * 0.5 + self.prediction_settings.background_saturation
+        hsv[:, :,
+        1] = mask * 0.5 + self.prediction_settings.background_saturation
 
         x_low, x_high, y_low, y_high = cropping.unpack_values()
 
         map = img_normalized * 0
-        map[y_low:y_high, x_low:x_high] = imresize(heat_map, (y_high - y_low, x_high - x_low))
+        map[y_low:y_high, x_low:x_high] = imresize(heat_map, (
+        y_high - y_low, x_high - x_low))
         map[map < 0] = 0
         map[map > 1] = 1
         hsv[:, :, 0] = 0.7 * (1 - map)
