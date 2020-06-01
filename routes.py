@@ -19,13 +19,13 @@ if not os.path.isdir(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/process": {"origins": FRONTEND_URL}})
+#cors = CORS(app) #, resources={r"/process": {"origins": FRONTEND_URL}})
 
 ast = AutoStarter(NN_TIMEOUT, ['python', 'process.py'], SOCKET_NAME)
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.split('.')[-1] in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.split('.')[-1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route('/process', methods=['POST'])
