@@ -1,15 +1,12 @@
 import base64
 import datetime
 import json
-import subprocess
 import urllib
 
 import requests
 
 from settings import *
-import cv2
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 import os
 from flask import Flask, request, jsonify
 
@@ -27,11 +24,18 @@ ast = AutoStarter(NN_TIMEOUT, ['python', 'process.py'], SOCKET_NAME)
 def allowed_file(filename):
     return '.' in filename and filename.split('.')[-1] in ALLOWED_EXTENSIONS
 
+def secure(filename):
+    for sep in os.path.sep, os.path.altsep:
+        if sep:
+            filename = filename.replace(sep, "_")
+    filename = str("_".join(filename.split())).strip("._")
+    return filename
+
 
 @app.route('/process', methods=['POST'])
 def process_image():
     filename = request.form['filename']
-    filename = str(datetime.datetime.now()) + '_' + secure_filename(filename)
+    filename = str(datetime.datetime.now()) + '_' + secure(filename)
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     ret_val = {'error': None}
     to_delete = []
