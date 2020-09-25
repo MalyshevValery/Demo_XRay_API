@@ -1,25 +1,25 @@
-import socket
+"""Listens for messages from starter and pushes them to callback"""
+from multiprocessing import Queue
+from .pill import PoisonPill
 
 
 class AutoListener:
     """NO THREADING"""
-    def __init__(self, socket_name, on_recv, keyword='DIE'):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(socket_name)
+    def __init__(self, in_conn: Queue, out_conn: Queue, callback):
+        self.in_conn = in_conn
+        self.out_conn = out_conn
+        self.callback = callback
+
+    def run(self):
+        """Main loop"""
         while True:
-            data = s.recv(1024)
+            data = self.in_conn.get()
             try:
-                if data != bytes(keyword, encoding='UTF-8'):
-                    if data == b'':
-                        ret = 'EMPTY'
-                    else:
-                        data = data.decode('UTF-8')
-                        print(data)
-                        on_recv(data)
-                        ret = 'SUCCESS'
-                else:
+                if isinstance(data, PoisonPill):
                     break
+                else:
+                    print(data)
+                    ret = self.callback(data)
             except Exception as e:
                 ret = str(e)
-            s.send(ret.encode('UTF-8'))
-        s.close()
+            self.out_conn.put(ret)

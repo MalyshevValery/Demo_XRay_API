@@ -1,13 +1,9 @@
-from settings import CONFIG_PATH, GPU, SOCKET_NAME
-import os
+from settings import CONFIG_PATH
 import json
 import numpy as np
 from skimage import io, transform
 from utils.autolistener import AutoListener
 from xray_processing.xray_predictor import XrayPredictor
-
-os.environ["CUDA_VISIBLE_DEVICES"] = GPU
-import tensorflow as tf
 
 
 def pred2str(predictions, items_per_row=3):
@@ -54,12 +50,15 @@ def save_combined(img_normalized, image_path, predictions, rgb, xp):
 def predict_single_image(image_path, xp):
     predictions, rgb, img_normalized = xp.load_and_predict_image(image_path)
     save_combined(img_normalized, image_path, predictions, rgb, xp)
+    return 'SUCCESS'
 
 
-if __name__ == '__main__':
-    xp = XrayPredictor(CONFIG_PATH, cpu_only=GPU == '')
+def main(parent_conn, child_conn):
+    xp = XrayPredictor(CONFIG_PATH, cpu_only=True)
 
-    alist = AutoListener(SOCKET_NAME,
-                         lambda input_: predict_single_image(image_path=input_,
-                                                             xp=xp))
+    listener = AutoListener(parent_conn, child_conn,
+                            lambda input_: predict_single_image(
+                                image_path=input_,
+                                xp=xp))
+    listener.run()
     print('Predictor process is dead')
