@@ -6,9 +6,7 @@ import urllib
 import requests
 
 from settings import *
-import cv2
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 import os
 from flask import Flask, request, jsonify
 
@@ -24,13 +22,20 @@ ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.split('.')[-1] in ALLOWED_EXTENSIONS
+
+def secure(filename):
+    for sep in os.path.sep, os.path.altsep:
+        if sep:
+            filename = filename.replace(sep, "_")
+    filename = str("_".join(filename.split())).strip("._")
+    return filename
 
 
 @app.route('/process', methods=['POST'])
 def process_image():
     filename = request.form['filename']
-    filename = str(datetime.datetime.now()) + '_' + secure_filename(filename)
+    filename = str(datetime.datetime.now()) + '_' + secure(filename)
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     ret_val = {'error': None}
     to_delete = []
@@ -55,12 +60,6 @@ def process_image():
             raise Exception('No image were sent')
 
         to_delete.append(input_path)
-
-        if not input_path.endswith('.png'):
-            image = cv2.imread(input_path)
-            cv2.imwrite(input_path + '_.png', image)
-            to_delete.append(input_path + '_.png')
-            input_path = input_path + '_.png'
 
         reply = ast.send_recv(input_path)
         print(reply)
