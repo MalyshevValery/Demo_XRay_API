@@ -44,6 +44,8 @@ def save_combined(img_normalized, image_path, predictions, rgb, xp):
     predictions['lung_heat_mean'] = np.mean(hm)
 
     with open(image_path + '_data.json', 'w') as f:
+        for k in predictions.keys():
+            predictions[k] = float(predictions[k])
         json.dump(predictions, f, indent=2)
 
 
