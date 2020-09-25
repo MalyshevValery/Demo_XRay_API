@@ -1,7 +1,6 @@
 import base64
 import datetime
 import json
-import subprocess
 import urllib
 
 import requests
@@ -21,7 +20,7 @@ if not os.path.isdir(UPLOAD_FOLDER):
 app = Flask(__name__)
 cors = CORS(app, resources={r"/process": {"origins": FRONTEND_URL}})
 
-ast = AutoStarter(NN_TIMEOUT, ['python', 'process.py'])
+ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
 
 
 def allowed_file(filename):

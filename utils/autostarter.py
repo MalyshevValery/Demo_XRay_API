@@ -1,6 +1,6 @@
 """Process starter class"""
 from multiprocessing import Queue, Process
-from process import main as routine
+from xray_processing.main_utils import main as routine
 import threading
 
 from .pill import PoisonPill
