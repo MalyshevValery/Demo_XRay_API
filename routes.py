@@ -6,7 +6,6 @@ import urllib
 import requests
 
 from settings import *
-from flask_cors import CORS
 import os
 from flask import Flask, request, jsonify
 
@@ -16,8 +15,6 @@ if not os.path.isdir(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app = Flask(__name__)
-#cors = CORS(app) #, resources={r"/process": {"origins": FRONTEND_URL}})
-
 ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
 
 
