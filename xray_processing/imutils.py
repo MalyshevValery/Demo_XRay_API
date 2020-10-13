@@ -7,7 +7,7 @@ from skimage.morphology import convex_hull_image
 
 def imresize(m, new_shape, order=1, mode='constant'):
     dtype = m.dtype
-    mult = np.max(np.abs(m)) * 2
+    mult = np.max(np.abs(m)) * 2 + 1e-8
     m = m.astype(np.float32) / mult
     m = transform.resize(m, new_shape, order=order, mode=mode)
     m = m * mult

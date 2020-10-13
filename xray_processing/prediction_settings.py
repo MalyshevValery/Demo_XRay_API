@@ -19,7 +19,7 @@ class XrayPredictionSettings:
         self.weights_path = os.path.join(self.job_dir, 'weights-min_val_loss.hdf5')
         self.map_layer_name = setup['map_layer_name']
         self.model_type = job['model']
-        self.class_names = job['labels']
+        self.class_names = job['labels'][:1] if job['binary'] else job['labels']
         self.normalization = setup['normalization']
         self.normalize_scores = setup['normalize_scores']
         self.to_noise = setup['to_noise']
@@ -28,6 +28,7 @@ class XrayPredictionSettings:
         self.heatmap_settings = HeatMapSettings(setup['heatmap'])
         self.background_saturation = setup['background_saturation']
         self.use_crutch = setup['use_crutch']
+        self.metadata_size = setup['metadata_size']
 
 
 class HeatMapSettings:
@@ -45,4 +46,4 @@ class HeatMapSettings:
 
 
 if __name__ == '__main__':
-    XrayPredictionSettings('setup_vgg16h_2.json')
+    XrayPredictionSettings('setup_vgg19h_1.json')

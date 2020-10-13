@@ -2,17 +2,18 @@ import os
 import json
 import numpy as np
 from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Model
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg19 import VGG19
 from tensorflow.keras.applications.resnet50 import ResNet50
 from tensorflow.keras.applications.mobilenet import MobileNet
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, GlobalMaxPooling2D, Flatten, Conv2D
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, GlobalMaxPooling2D, Flatten, Conv2D, concatenate
+from tensorflow.keras.layers import RepeatVector, Reshape
+from tensorflow.keras.models import Model, Sequential
 
 from xray_processing.prediction_settings import XrayPredictionSettings
-from xray_processing.conv2dblock import Conv2DBlock
+from .conv2dblock import Conv2DBlock
 
 
 class ModelsLoader:
@@ -27,7 +28,9 @@ class ModelsLoader:
     def load_models(self, prediction_settings):
         s: XrayPredictionSettings = prediction_settings
 
-        cls_model = self._build_classification_model(s.job, (0, s.image_sz, s.image_sz, s.channels))
+        x_shape = (0, s.image_sz, s.image_sz, s.channels)
+        meta_shape = (0, s.metadata_size)
+        cls_model = self._build_classification_model(s.job, x_shape, meta_shape)
 
         corrs = None
         coefs = None
@@ -92,16 +95,30 @@ class ModelsLoader:
             print('Unknown net model: ' + model_type)
             return None
 
-    def _build_classification_model(self, job, x_shape):
+    def _build_classification_model(self, job, x_shape, meta_shape):
         model_type = self._parse_model(job['model'])
-
         num_classes = 1 if job['binary'] else len(job['labels'])
+
         input_shape = (x_shape[1], x_shape[2], x_shape[3])
         base_model = model_type(weights=None, include_top=False, input_shape=input_shape)
 
-        if job['pooling'] in ['avg', 'max', 'flt']:
+        if job['cut_layers'] == 0:
             x = base_model.output
+        else:
+            x = base_model.layers[-(1 + job['cut_layers'])].output
 
+        # x = BatchNormalization()(x)
+        # x = Dropout(0.5)(x)
+
+        meta_model = Sequential()
+        meta_model.add(Dense(max(1, job['meta_nodes']), input_dim=meta_shape[1], activation='relu'))
+
+        if job['meta_nodes'] <= 0:
+            w, b = tuple(meta_model.layers[0].get_weights())
+            meta_model.layers[0].set_weights([w * 0, b * 0])
+            meta_model.layers[0].trainable = False
+
+        if job['pooling'] in {'avg', 'max', 'flt'}:
             if job['pooling'] == 'avg':
                 x = GlobalAveragePooling2D()(x)
             elif job['pooling'] == 'max':
@@ -109,12 +126,17 @@ class ModelsLoader:
             elif job['pooling'] == 'flt':
                 x = Flatten()(x)
 
+            x = concatenate([x, meta_model.output])
+
             for fc_id in range(job['fc_num']):
                 x = Dense(job['fc_size'], activation='relu', name='fc%i' % fc_id)(x)
 
             predictions = Dense(num_classes, activation='sigmoid')(x)
-        elif job['pooling'] in ['havg', 'hmax']:
-            x = base_model.output
+        elif job['pooling'] in {'havg', 'hmax'}:
+            act_shape = int(x.shape[1]), int(x.shape[2])
+            z = RepeatVector(act_shape[0] * act_shape[1])(meta_model.output)
+            z = Reshape((act_shape[0], act_shape[1], int(z.shape[-1])))(z)
+            x = concatenate([x, z], axis=-1)
 
             for fc_id in range(job['fc_num']):
                 x = Conv2D(job['fc_size'], (1, 1), activation='relu', name='pxw%i' % fc_id)(x)
@@ -127,5 +149,6 @@ class ModelsLoader:
         else:
             raise Exception('Unsupported pooling ' + job['pooling'])
 
-        model = Model(inputs=base_model.input, outputs=predictions)
+        model = Model(inputs=[base_model.input, meta_model.input], outputs=predictions)
+
         return model

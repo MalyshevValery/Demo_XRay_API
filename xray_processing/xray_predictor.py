@@ -5,12 +5,12 @@ import numpy as np
 import tensorflow
 from skimage import io, color, exposure, morphology
 from tensorflow.keras import backend as K
+from tensorflow.keras.models import Model
 
 from xray_processing.prediction_settings import XrayPredictionSettings
 from xray_processing.models_loader import ModelsLoader
-from xray_processing.cropping import Cropping
-from xray_processing.imutils import imresize, normalize_by_lung_convex_hull, \
-    normalize_by_lung_mean_std
+from .cropping import Cropping
+from xray_processing.imutils import imresize, normalize_by_lung_convex_hull, normalize_by_lung_mean_std
 
 
 class XrayPredictor:
@@ -32,8 +32,7 @@ class XrayPredictor:
 
         lungs = self._segment_lungs(preview)
 
-        img_normalized, mask, img_roi, mask_roi, cropping = self._normalize_and_crop(
-            img_gray, lungs)
+        img_normalized, mask, img_roi, mask_roi, cropping = self._normalize_and_crop(img_gray, lungs)
 
         heat_map, prob, predictions = self._infer_neural_net(img_roi)
 
@@ -51,20 +50,19 @@ class XrayPredictor:
         ext = os.path.splitext(input_image_path)[-1].lower()
         if ext in ['.jpg', '.png', '.bmp', '.jpeg']:
             img_original = io.imread(input_image_path)
-        elif ext in ['.dcm', '.dicom', '.bin']:
+        elif ext in ['.dcm', '.dicom', '.bin', '']:
             dcm = pydicom.dcmread(input_image_path)
             img_original = dcm.pixel_array
+            # if 'PhotometricInterpretation' in dcm.dir() and dcm.PhotometricInterpretation.upper() == 'MONOCHROME2':
+            #     img_original = np.max(img_original) - img_original
             if 'ViewPosition' in dcm.dir() and dcm.ViewPosition.upper() == 'AP':
                 img_original = img_original[:, ::-1]
-            if 'PhotometricInterpretation' in dcm.dir() and dcm.PhotometricInterpretation.upper() == 'MONOCHROME1':
-                img_original = np.max(img_original) - img_original
         elif ext in ['.eli']:
             img_original = XrayPredictor._load_eli_image(input_image_path)
         else:
             raise Exception('Unsupported input image extension: ' + ext)
 
-        print('Loaded image (%i x %i)' % (
-        img_original.shape[0], img_original.shape[1]))
+        print('Loaded image (%i x %i)' % (img_original.shape[0], img_original.shape[1]))
         return img_original
 
     @staticmethod
@@ -75,12 +73,13 @@ class XrayPredictor:
         resolution_bytes = all_bytes[16:24]
         resolution = np.frombuffer(resolution_bytes, dtype=np.uint32)
         num_pixels = np.prod(resolution)
-        pixel_bytes = all_bytes[-(int(num_pixels) * 2):]
+
+        pixel_bytes = all_bytes[-int(num_pixels * 2):]
         pixels = np.frombuffer(pixel_bytes, dtype=np.int16)
 
         w, h = tuple(resolution)
         img_original = pixels.reshape((h, w))
-        img_original = 2 ** 15 - img_original
+        img_original = 2**15 - img_original
 
         return img_original
 
@@ -94,9 +93,7 @@ class XrayPredictor:
             elif img_original.shape[2] == 4:
                 img_gray = color.rgb2gray(img_original[:, :, 0:3])
             else:
-                raise Exception(
-                    'Unsupported number of channels of the input image: ' +
-                    img_original.shape[2])
+                raise Exception('Unsupported number of channels of the input image: ' + img_original.shape[2])
         else:
             img_gray = img_original.copy()
 
@@ -131,8 +128,7 @@ class XrayPredictor:
         x = np.expand_dims(x, axis=-1)
 
         segm_model = self.models.segm_model
-        lungs = segm_model.predict(x, batch_size=1)[..., 0].reshape(
-            preview.shape)
+        lungs = segm_model.predict(x, batch_size=1)[..., 0].reshape(preview.shape)
         lungs = lungs > 0.5
         lungs = remove_small_regions(lungs, 0.02 * np.prod(preview.shape))
 
@@ -172,8 +168,7 @@ class XrayPredictor:
         elif self.prediction_settings.normalization == 'mean_std':
             img_normalized = normalize_by_lung_mean_std(img_gray, mask)
         else:
-            raise Exception('Unknown normalization: ' + str(
-                self.prediction_settings.normalization))
+            raise Exception('Unknown normalization: ' + str(self.prediction_settings.normalization))
 
         img_normalized[img_normalized < 0] = 0
         img_normalized[img_normalized > 1] = 1
@@ -187,7 +182,7 @@ class XrayPredictor:
         img_roi = cropping.crop_image(img_prepared)
         mask_roi = cropping.crop_image(mask)
 
-        img_roi = imresize(img_roi, (image_sz, image_sz))
+        img_roi = imresize(img_roi, (image_sz, image_sz), order=1)
         mask_roi = imresize(mask_roi, (image_sz, image_sz), order=0)
 
         return img_normalized, mask, img_roi, mask_roi, cropping
@@ -203,10 +198,11 @@ class XrayPredictor:
         x = np.expand_dims(x, axis=-1)
 
         print('Evaluating net')
-        prob = m.cls_model.predict(x, batch_size=1)[0, :]
+        meta = np.array([[0.5, 1]]).astype(x.dtype)
+        prob = m.cls_model.predict([x, meta], batch_size=1)[0, :]
 
         if s.use_crutch and s.heatmap_settings.method == 'layer':
-            map_layer_output = m.map_layer_model.predict(x, batch_size=1)
+            map_layer_output = m.map_layer_model.predict([x, meta], batch_size=1)
             map_layer_output[0, 2:5, 4:6, :] = 0
             prediction_scores = np.max(map_layer_output[0], axis=(0, 1))
             predictions = dict()
@@ -217,36 +213,34 @@ class XrayPredictor:
             heat_map = imresize(heat_map, (image_sz, image_sz))
         else:
             predictions = self._compose_predictions(prob)
-            heat_map = self._build_heatmap(image_sz, x,
-                                           predictions['class_number'])
+            heat_map = self._build_heatmap(image_sz, x, meta, predictions['class_number'])
 
         return heat_map, prob, predictions
 
-    def _build_heatmap(self, image_sz, x, max_prob):
+    def _build_heatmap(self, image_sz, x, meta, max_prob):
         m: ModelsLoader = self.models
         s: XrayPredictionSettings = self.prediction_settings
 
         if s.heatmap_settings.method == 'corrs':
-            map_layer_output = m.map_layer_model.predict(x, batch_size=1)
+            map_layer_output = m.map_layer_model.predict([x, meta], batch_size=1)
             heat_map = np.matmul(map_layer_output, m.corrs)[0, ...]
             heat_map = imresize(heat_map, (image_sz, image_sz))
             # heat_map *= s.heatmap_settings.corrs_multiplier
             heat_map *= max_prob / heat_map.max()
         elif s.heatmap_settings.method == 'coefs':
-            map_layer_output = m.map_layer_model.predict(x, batch_size=1)
+            map_layer_output = m.map_layer_model.predict([x, meta], batch_size=1)
             heat_map = np.matmul(map_layer_output, m.coefs)[0, ...]
             heat_map = imresize(heat_map, (image_sz, image_sz))
             # heat_map *= s.heatmap_settings.coefs_multiplier
             heat_map *= max_prob / heat_map.max()
         elif s.heatmap_settings.method == 'layer':
-            map_layer_output = m.map_layer_model.predict(x, batch_size=1)
+            map_layer_output = m.map_layer_model.predict([x, meta], batch_size=1)
             heat_map = map_layer_output[0, :, :, 0].astype(float)
             heat_map = imresize(heat_map, (image_sz, image_sz))
         elif s.heatmap_settings.method == 'gradcam':
-            heat_map = self._build_heatmap_grad_cam(x, max_prob)
+            heat_map = self._build_heatmap_grad_cam([x, meta], max_prob)
         else:
-            raise Exception(
-                'Unsupported heatmap method "%s"' % s.heatmap_settings.method)
+            raise Exception('Unsupported heatmap method "%s"' % s.heatmap_settings.method)
 
         heat_map[heat_map < 0] = 0
         heat_map[heat_map > 1] = 1
@@ -257,18 +251,18 @@ class XrayPredictor:
         s: XrayPredictionSettings = self.prediction_settings
 
         model = m.cls_model
-        map_output = model.get_layer(s.map_layer_name).output
 
-        grads = K.gradients(model.output[:, 0], map_output)[0]
-        pooled_grads = K.mean(grads, axis=(0, 1, 2))
-        iterate = K.function([model.input], [pooled_grads, map_output])
+        grad_model = Model(inputs=[model.inputs], outputs=[model.get_layer(s.map_layer_name).output, model.output])
+        with tf.GradientTape() as tape:
+            (layer_outputs, model_output) = grad_model([x])
+            grads = tape.gradient(model_output[:, 0], layer_outputs)
+            pooled_grads = K.mean(grads, axis=(0, 1, 2))
 
-        pooled_grads_value, conv_layer_output = iterate([x])
-
-        heatmap = np.matmul(conv_layer_output, pooled_grads_value)[0]
+        heatmap = np.matmul(layer_outputs, pooled_grads)[0]
         heatmap[heatmap < 0] = 0
-        heatmap *= max_prob / np.max(heatmap) * 1.5
-        heatmap[heatmap > max_prob * 1.3] = max_prob * 1.3
+        if np.max(heatmap) > 0:
+            heatmap *= max_prob / np.max(heatmap) * 1.5
+            heatmap[heatmap > max_prob] = max_prob
 
         return heatmap
 
@@ -309,14 +303,12 @@ class XrayPredictor:
         v[v < 0] = 0
         v[v > 1] = 1
         hsv[:, :, 2] = 0.1 + 0.9 * v
-        hsv[:, :,
-        1] = mask * 0.5 + self.prediction_settings.background_saturation
+        hsv[:, :, 1] = mask * 0.5 + self.prediction_settings.background_saturation
 
         x_low, x_high, y_low, y_high = cropping.unpack_values()
 
         map = img_normalized * 0
-        map[y_low:y_high, x_low:x_high] = imresize(heat_map, (
-        y_high - y_low, x_high - x_low))
+        map[y_low:y_high, x_low:x_high] = imresize(heat_map, (y_high - y_low, x_high - x_low))
         map[map < 0] = 0
         map[map > 1] = 1
         hsv[:, :, 0] = 0.7 * (1 - map)
@@ -349,3 +341,15 @@ class XrayPredictor:
                 config.gpu_options.per_process_gpu_memory_fraction = 0.5
                 config.gpu_options.visible_device_list = gpu_list
             set_session(tf.Session(config=config))
+
+
+def main():
+    xp = XrayPredictor('setup_vgg16_1.json', cpu_only=True)
+    predictions, rgb, img_normalized = xp.load_and_predict_image('test_data/tb_01.jpg')
+    print(predictions)
+    io.imsave('temp_rgb.png', (rgb * 255).astype(np.uint8))
+    io.imsave('temp_normalized.png', (img_normalized * 255).astype(np.uint8))
+
+
+if __name__ == '__main__':
+    main()
