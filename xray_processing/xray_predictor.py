@@ -53,10 +53,13 @@ class XrayPredictor:
         elif ext in ['.dcm', '.dicom', '.bin', '']:
             dcm = pydicom.dcmread(input_image_path)
             img_original = dcm.pixel_array
+            if ext == '.bin':
+                img_original = np.max(img_original) - img_original
+                img_original = img_original[:, ::-1]
             # if 'PhotometricInterpretation' in dcm.dir() and dcm.PhotometricInterpretation.upper() == 'MONOCHROME2':
             #     img_original = np.max(img_original) - img_original
-            if 'ViewPosition' in dcm.dir() and dcm.ViewPosition.upper() == 'AP':
-                img_original = img_original[:, ::-1]
+            # if 'ViewPosition' in dcm.dir() and dcm.ViewPosition.upper() == 'AP':
+            #     img_original = img_original[:, ::-1]
         elif ext in ['.eli']:
             img_original = XrayPredictor._load_eli_image(input_image_path)
         else:
