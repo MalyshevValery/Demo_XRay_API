@@ -19,7 +19,9 @@ ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.split('.')[-1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.split('.')[
+        -1].lower() in ALLOWED_EXTENSIONS
+
 
 def secure(filename):
     for sep in os.path.sep, os.path.altsep:
@@ -82,6 +84,22 @@ def process_image():
         for s in to_delete:
             os.remove(s)
     return jsonify(ret_val)
+
+
+@app.route('/examples', methods=['GET'])
+def examples():
+    return jsonify(sorted(os.listdir(EXAMPLES_FOLDER)))
+
+@app.route('/examples/<path:filename>')
+def get_preview(filename):
+    path = os.path.join(EXAMPLES_FOLDER, secure(filename))
+    try:
+        with open(path, 'rb') as file:
+            b64 = base64.b64encode(file.read()).decode('utf-8')
+            resp = {'name': filename, 'base64': b64}
+    except Exception as e:
+        resp = {'error': str(e)}
+    return jsonify(resp)
 
 
 if __name__ == "__main__":

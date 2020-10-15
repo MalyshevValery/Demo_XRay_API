@@ -6,4 +6,5 @@ ALLOWED_EXTENSIONS = {'bmp', 'dib', 'jpeg', 'jpg', 'jpe', 'jp2', 'png', 'webp',
 
 NN_TIMEOUT = 300
 UPLOAD_FOLDER = 'upload_folder'
+EXAMPLES_FOLDER = '/data/montgomery/'
 CONFIG_PATH = 'model/setup3_vgg16_hmax_v1.json'
