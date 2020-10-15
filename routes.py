@@ -1,10 +1,12 @@
 import base64
 import datetime
 import json
+import traceback
 import urllib
 
 import requests
 
+from bot import BotNotifier
 from settings import *
 import os
 from flask import Flask, request, jsonify
@@ -16,6 +18,8 @@ if not os.path.isdir(UPLOAD_FOLDER):
 
 app = Flask(__name__)
 ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
+bot = BotNotifier()
+# CORS(app)
 
 
 def allowed_file(filename):
@@ -84,6 +88,7 @@ def process_image():
     except Exception as e:
         with open(LOG_FILE, 'a') as f:
             f.write(f'[{request.remote_addr}] {filename} - {str(e)}\n')
+        bot.send(f'#XRAY #SERVICE\n {traceback.format_exc()}')
         ret_val['error'] = str(e)
     finally:
         for s in to_delete:
