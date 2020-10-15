@@ -45,7 +45,7 @@ class XrayPredictor:
 
     @staticmethod
     def _load_original_image(input_image_path):
-        print('Loading image from ' + input_image_path)
+        # print('Loading image from ' + input_image_path)
 
         ext = os.path.splitext(input_image_path)[-1].lower()
         if ext in ['.jpg', '.png', '.bmp', '.jpeg']:
@@ -65,7 +65,7 @@ class XrayPredictor:
         else:
             raise Exception('Unsupported input image extension: ' + ext)
 
-        print('Loaded image (%i x %i)' % (img_original.shape[0], img_original.shape[1]))
+        # print('Loaded image (%i x %i)' % (img_original.shape[0], img_original.shape[1]))
         return img_original
 
     @staticmethod
@@ -200,7 +200,7 @@ class XrayPredictor:
         x = np.expand_dims(x, axis=0)
         x = np.expand_dims(x, axis=-1)
 
-        print('Evaluating net')
+        # print('Evaluating net')
         meta = np.array([[0.5, 1]]).astype(x.dtype)
         prob = m.cls_model.predict([x, meta], batch_size=1)[0, :]
 

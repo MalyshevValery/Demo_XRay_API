@@ -1,10 +1,14 @@
-from settings import CONFIG_PATH
+import traceback
+
+from settings import CONFIG_PATH, LOG_FILE
 import json
 import numpy as np
 from skimage import io, transform
 from utils.autolistener import AutoListener
 from xray_processing.xray_predictor import XrayPredictor
 
+from bot import BotNotifier
+bot = BotNotifier()
 
 def pred2str(predictions, items_per_row=3):
     rows = []
@@ -50,17 +54,30 @@ def save_combined(img_normalized, image_path, predictions, rgb, xp):
 
 
 def predict_single_image(image_path, xp):
-    predictions, rgb, img_normalized = xp.load_and_predict_image(image_path)
-    save_combined(img_normalized, image_path, predictions, rgb, xp)
-    return 'SUCCESS'
+    try:
+        predictions, rgb, img_normalized = xp.load_and_predict_image(image_path)
+        save_combined(img_normalized, image_path, predictions, rgb, xp)
+        return 'SUCCESS'
+    except Exception as e:
+        bot.send(f'#XRAY #PROCESS #PREDICT\n {traceback.format_exc()}')
+        return str(e)
+
 
 
 def main(parent_conn, child_conn):
-    xp = XrayPredictor(CONFIG_PATH, cpu_only=True)
+    with open(LOG_FILE, 'a') as f:
+        f.write('Process started\n')
+
+    try:
+        xp = XrayPredictor(CONFIG_PATH, cpu_only=True)
+    except Exception as e:
+        bot.send(f'#XRAY #PROCESS #START\n {traceback.format_exc()}')
+        exit(1)
 
     listener = AutoListener(parent_conn, child_conn,
                             lambda input_: predict_single_image(
                                 image_path=input_,
                                 xp=xp))
     listener.run()
-    print('Predictor process is dead')
+    with open(LOG_FILE, 'a') as f:
+        f.write('Process finished\n')

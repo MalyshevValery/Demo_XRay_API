@@ -4,12 +4,12 @@ import json
 
 class XrayPredictionSettings:
     def __init__(self, setup_file_path):
-        print('Loading setup from ' + setup_file_path)
+        # print('Loading setup from ' + setup_file_path)
         with open(setup_file_path, 'r') as f:
             setup = json.load(f)
 
         job_file_path = os.path.join(setup['job_dir'], 'job.json')
-        print('Loading job from ' + job_file_path)
+        # print('Loading job from ' + job_file_path)
         with open(job_file_path, 'r') as f:
             job = json.load(f)
 

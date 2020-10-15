@@ -41,23 +41,23 @@ class ModelsLoader:
         elif s.heatmap_settings.method == 'corrs':
             map_layer_model = Model(inputs=cls_model.input, outputs=cls_model.get_layer(s.map_layer_name).output)
             corrs_path = s.weights_path[:-5] + '_' + s.map_layer_name + '_max_train_corrs.txt'
-            print('Loading corrs from ' + corrs_path)
+            # print('Loading corrs from ' + corrs_path)
             corrs = np.loadtxt(corrs_path)
             corrs[np.isnan(corrs)] = 0
             corrs = np.sign(corrs) * np.square(corrs)
         elif s.heatmap_settings.method == 'coefs':
             map_layer_model = Model(inputs=cls_model.input, outputs=cls_model.get_layer(s.map_layer_name).output)
             coefs_path = s.weights_path[:-5] + '_' + s.map_layer_name + '_max_train_coefs.txt'
-            print('Loading coefs from ' + coefs_path)
+            # print('Loading coefs from ' + coefs_path)
             coefs = np.loadtxt(coefs_path)[:-1]
             coefs[np.isnan(coefs)] = 0
         else:
             raise Exception('Unsupported heatmap method "%s"' % s.heatmap_settings.method)
 
-        print('Loading weights from ' + s.weights_path)
+        # print('Loading weights from ' + s.weights_path)
         cls_model.load_weights(s.weights_path)
 
-        print('Loading segmentation model from ' + s.segm_model_path)
+        # print('Loading segmentation model from ' + s.segm_model_path)
         segm_model = load_model(s.segm_model_path, compile=False, custom_objects={'Conv2DBlock': Conv2DBlock})
 
         if s.normalize_scores:
