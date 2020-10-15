@@ -24,7 +24,7 @@ class AutoStarter:
         self.child_q = Queue()
         self.starter_queue = Queue()
 
-        self.starter_thread = Thread(target=self.__starter_routine)
+        self.starter_thread = Thread(target=self.__starter_routine, daemon=True)
         self.starter_thread.start()
 
     def start(self):
@@ -32,12 +32,9 @@ class AutoStarter:
 
     def __starter_routine(self):
         while True:
-            try:
-                self.starter_queue.get(block=True, timeout=5)
-                if self.proc is None:
-                    self.__start()
-            except Empty:
-                pass
+            self.starter_queue.get()
+            if self.proc is None:
+                self.__start()
 
     def __start(self):
         if self.proc is not None:
