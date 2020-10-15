@@ -8,3 +8,7 @@ NN_TIMEOUT = 300
 UPLOAD_FOLDER = 'upload_folder'
 EXAMPLES_FOLDER = '/data/montgomery/'
 CONFIG_PATH = 'model/setup3_vgg16_hmax_v1.json'
+LOG_FILE = 'process.log'
+
+BOT_TOKEN = '1274451529:AAGjY9GFZE4dbqajqEfo620IowE7oBpmvLs'
+BOT_CHAT = '-489078008'

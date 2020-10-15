@@ -78,7 +78,12 @@ def process_image():
             ret_val['data'] = obj
             to_delete.append(input_path + '_data.json')
 
+        with open(LOG_FILE, 'a') as f:
+            f.write(f'[{request.remote_addr}] {filename} - SUCCESS {obj}\n')
+
     except Exception as e:
+        with open(LOG_FILE, 'a') as f:
+            f.write(f'[{request.remote_addr}] {filename} - {str(e)}\n')
         ret_val['error'] = str(e)
     finally:
         for s in to_delete:

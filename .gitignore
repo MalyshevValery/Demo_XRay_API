@@ -3,3 +3,4 @@
 upload_folder/
 venv/
 models
+!/process.log
