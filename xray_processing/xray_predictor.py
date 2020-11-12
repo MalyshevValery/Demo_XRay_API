@@ -51,7 +51,7 @@ class XrayPredictor:
         if ext in ['.jpg', '.png', '.bmp', '.jpeg']:
             img_original = io.imread(input_image_path)
         elif ext in ['.dcm', '.dicom', '.bin', '']:
-            dcm = pydicom.dcmread(input_image_path)
+            dcm = pydicom.dcmread(input_image_path, force=True)
             img_original = dcm.pixel_array
             if ext == '.bin':
                 img_original = np.max(img_original) - img_original

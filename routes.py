@@ -90,6 +90,7 @@ def process_image():
             f.write(f'[{request.remote_addr}] {filename} - {str(e)}\n')
         bot.send(f'#XRAY #SERVICE\n {traceback.format_exc()}')
         ret_val['error'] = str(e)
+        return jsonify(ret_val)
     finally:
         for s in to_delete:
             os.remove(s)
