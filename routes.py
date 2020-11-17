@@ -5,6 +5,7 @@ import traceback
 import urllib
 
 import requests
+from flask_cors import CORS
 
 from bot import BotNotifier
 from settings import *
@@ -12,6 +13,7 @@ import os
 from flask import Flask, request, jsonify
 
 from utils.autostarter import AutoStarter
+from utils.req_user import get_user_info
 
 if not os.path.isdir(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -19,7 +21,7 @@ if not os.path.isdir(UPLOAD_FOLDER):
 app = Flask(__name__)
 ast = AutoStarter(NN_TIMEOUT, ['python', 'xray_processing/main_utils.py'])
 bot = BotNotifier()
-# CORS(app)
+CORS(app, supports_credentials=True)
 
 
 def allowed_file(filename):
@@ -37,6 +39,18 @@ def secure(filename):
 
 @app.route('/process', methods=['POST'])
 def process_image():
+    # Test user
+    cookie = request.cookies.get('ory_kratos_session')
+    print(cookie)
+    if cookie is None:
+        return jsonify({'error': 'Not logged in'})
+    info = get_user_info(cookie, KRATOS_API)
+    print(info)
+    user_id = info.get('id', None)
+    if user_id is None:
+        return jsonify({'error': 'Wrong user'})
+    print(user_id)
+
     filename = request.form['filename']
     filename = str(datetime.datetime.now()) + '_' + secure(filename)
     input_path = os.path.join(UPLOAD_FOLDER, filename)
