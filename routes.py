@@ -82,6 +82,11 @@ def process_image():
             ret_val['data'] = obj
             to_delete.append(input_path + '_data.json')
 
+        with open(input_path + '_feats.json', 'r') as file:
+            obj = json.load(file)
+            ret_val['feats'] = obj
+            to_delete.append(input_path + '_feats.json')
+
         with open(LOG_FILE, 'a') as f:
             f.write(f'[{request.remote_addr}] {filename} - SUCCESS {obj}\n')
 

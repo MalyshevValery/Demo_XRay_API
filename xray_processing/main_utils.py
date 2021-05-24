@@ -31,7 +31,7 @@ def pred2str(predictions, items_per_row=3):
     return '\n'.join(rows)
 
 
-def save_combined(img_normalized, image_path, predictions, rgb, xp):
+def save_combined(img_normalized, image_path, predictions, rgb, feats, xp):
     tmp = rgb * 0
     for c in range(3):
         tmp[:, :, c] = img_normalized
@@ -51,12 +51,15 @@ def save_combined(img_normalized, image_path, predictions, rgb, xp):
         for k in predictions.keys():
             predictions[k] = float(predictions[k])
         json.dump(predictions, f, indent=2)
+    with open(image_path + '_feats.json', 'w') as f:
+        feats = [float(v) for v in feats]
+        json.dump(feats, f, indent=2)
 
 
 def predict_single_image(image_path, xp):
     try:
-        predictions, rgb, img_normalized = xp.load_and_predict_image(image_path)
-        save_combined(img_normalized, image_path, predictions, rgb, xp)
+        predictions, rgb, img_normalized, feats = xp.load_and_predict_image(image_path)
+        save_combined(img_normalized, image_path, predictions, rgb, feats, xp)
         return 'SUCCESS'
     except Exception as e:
         bot.send(f'#XRAY #PROCESS #PREDICT\n {traceback.format_exc()}')

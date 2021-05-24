@@ -34,14 +34,14 @@ class XrayPredictor:
 
         img_normalized, mask, img_roi, mask_roi, cropping = self._normalize_and_crop(img_gray, lungs)
 
-        heat_map, prob, predictions = self._infer_neural_net(img_roi)
+        heat_map, prob, predictions, feats = self._infer_neural_net(img_roi)
 
         rgb = self._make_colored(img_normalized, mask, heat_map, cropping)
 
         self.mask = mask
         self.heat_map = heat_map
         self.img_roi = img_roi
-        return predictions, rgb, img_normalized
+        return predictions, rgb, img_normalized, feats
 
     @staticmethod
     def _load_original_image(input_image_path):
@@ -202,8 +202,9 @@ class XrayPredictor:
 
         # print('Evaluating net')
         meta = np.array([[0.5, 1]]).astype(x.dtype)
-        prob = m.cls_model.predict([x, meta], batch_size=1)[0, :]
-
+        prob, feats = m.cls_model.predict([x, meta], batch_size=1)
+        prob = prob[0]
+        feats = feats[0]
         if s.use_crutch and s.heatmap_settings.method == 'layer':
             map_layer_output = m.map_layer_model.predict([x, meta], batch_size=1)
             map_layer_output[0, 2:5, 4:6, :] = 0
@@ -218,7 +219,7 @@ class XrayPredictor:
             predictions = self._compose_predictions(prob)
             heat_map = self._build_heatmap(image_sz, x, meta, predictions['class_number'])
 
-        return heat_map, prob, predictions
+        return heat_map, prob, predictions, feats
 
     def _build_heatmap(self, image_sz, x, meta, max_prob):
         m: ModelsLoader = self.models
